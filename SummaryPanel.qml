@@ -449,7 +449,7 @@ Panel {
               height: parent.height
               anchors.right: parent.right
               anchors.rightMargin: Style.space(4)
-              visible: row.pinned || row.selectedRow || rowMouse.containsMouse
+              visible: row.pinned || row.selectedRow
               z: 2
 
               Text {

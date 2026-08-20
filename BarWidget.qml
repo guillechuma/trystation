@@ -29,12 +29,22 @@ BarWidget {
 
   function openLibrary() {
     root.close()
-    if (libraryLoader.item)
-      libraryLoader.item.open(JSON.stringify({ path: root.triesPath }))
+    libraryLoader.pendingPayload = JSON.stringify({ path: root.triesPath })
+    if (libraryLoader.item) {
+      libraryLoader.item.open(libraryLoader.pendingPayload)
+      libraryLoader.pendingPayload = ""
+    } else {
+      libraryLoader.active = true
+    }
   }
 
   function closeLibrary() {
     if (libraryLoader.item) libraryLoader.item.close()
+    Qt.callLater(function() { libraryLoader.active = false })
+  }
+
+  function libraryClosed() {
+    Qt.callLater(function() { libraryLoader.active = false })
   }
 
   function startCreate() {
@@ -77,12 +87,17 @@ BarWidget {
 
   Loader {
     id: libraryLoader
-    active: true
+    property string pendingPayload: ""
+    active: false
     source: Qt.resolvedUrl("TryStation.qml")
     visible: false
     onLoaded: {
       root.injectChildren()
       Qt.callLater(root.injectChildren)
+      if (pendingPayload) {
+        item.open(pendingPayload)
+        pendingPayload = ""
+      }
     }
   }
 

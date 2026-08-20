@@ -171,6 +171,10 @@ Removing the plugin does not remove tries or local labels. To remove labels as w
 rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/trystation"
 ```
 
+## Credits
+
+TryStation is built around [Tobi's `try`](https://github.com/tobi/try), the ephemeral workspace manager that defines the try workflow and directory convention.
+
 ## License
 
 MIT

@@ -33,6 +33,7 @@ Item {
   property int groupSuggestionIndex: -1
   property var pendingDetails: null
   property bool closingFromHost: false
+  property bool hasOpened: false
 
   readonly property color background: Color.background
   readonly property color foreground: Color.foreground
@@ -47,6 +48,7 @@ Item {
     var payload = TryModel.parsePayload(payloadJson)
     if (payload.path) root.triesPath = String(payload.path)
     root.closingFromHost = false
+    root.hasOpened = true
     stationWindow.visible = true
     root.refresh()
     Qt.callLater(function() { searchField.forceActiveFocus() })
@@ -417,8 +419,11 @@ Item {
 
     onVisibleChanged: {
       if (!visible) root.persistDraft()
-      if (!visible && !root.closingFromHost && !root.hostWidget
-          && root.shell && typeof root.shell.hide === "function")
+      if (!visible && root.hasOpened && !root.closingFromHost && root.hostWidget
+          && typeof root.hostWidget.libraryClosed === "function")
+        root.hostWidget.libraryClosed()
+      else if (!visible && root.hasOpened && !root.closingFromHost && !root.hostWidget
+               && root.shell && typeof root.shell.hide === "function")
         root.shell.hide(root.pluginId)
     }
 
