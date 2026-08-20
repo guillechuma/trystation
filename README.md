@@ -13,7 +13,7 @@ TryStation is an Omarchy Quattro plugin for the experiment directories already m
 - `TRY` bar widget with left-click, right-click, and middle-click actions
 - Browse and search every try by name, group, language, Git branch, or note
 - Inspect Git status, worktree state, stack, README summary, and activity time
-- Create date-prefixed tries compatible with the CLI
+- Create date-prefixed tries compatible with the CLI and open them immediately in the default editor
 - Add local groups, notes, and pins without changing the try directory layout
 - Open a try in the Omarchy editor, terminal, or file manager
 - Copy its path or safely move it to the desktop trash

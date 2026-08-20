@@ -156,13 +156,25 @@ Panel {
 
   Process {
     id: createProc
+    stdout: StdioCollector { id: createOutput; waitForEnd: true }
     stderr: StdioCollector { id: createError; waitForEnd: true }
     onExited: function(exitCode) {
       if (exitCode === 0) {
-        root.createMode = false
-        root.statusText = "TRY CREATED"
-        root.refresh()
-        Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+        var createdPath = ""
+        try {
+          var result = JSON.parse(createOutput.text)
+          createdPath = String(result.path || "")
+        } catch (e) {}
+
+        if (createdPath) {
+          root.close()
+          Quickshell.execDetached(["omarchy-launch-editor", createdPath])
+        } else {
+          root.createMode = false
+          root.statusText = "TRY CREATED, BUT ITS PATH WAS NOT RETURNED"
+          root.statusError = true
+          Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+        }
       } else {
         var detail = createError.text.trim()
         try {
@@ -448,7 +460,7 @@ Panel {
                 }
               }
               Button {
-                text: "CREATE"
+                text: "CREATE & OPEN"
                 bordered: true
                 foreground: root.contentForeground
                 accent: Color.accent
