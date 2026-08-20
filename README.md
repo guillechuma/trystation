@@ -4,6 +4,14 @@
 
 TryStation is an Omarchy Quattro plugin for the experiment directories already managed by `try`. It adds a themed desktop window and optional bar widget without replacing the CLI or introducing a second project format.
 
+> **Preview coming soon**
+>
+> Add the marketplace screenshot or short demo at `docs/trystation-preview.webp` before publishing.
+
+<!-- Replace the preview notice above with:
+![TryStation summary and library](docs/trystation-preview.webp)
+-->
+
 ## Features
 
 - Compact Omarchy-style summary popout for recent and pinned tries
@@ -21,7 +29,22 @@ TryStation is an Omarchy Quattro plugin for the experiment directories already m
 - Follow graduated symlinks created by `try`
 - Refresh on open, after TryStation changes, or explicitly through the refresh action
 
-The filesystem remains the source of truth. TryStation scans the immediate directories under the configured try path, just as `try` does. Optional labels are kept separately in `$XDG_STATE_HOME/trystation/metadata.json` and keyed by filesystem identity, so groups survive CLI renames.
+## How it works
+
+The configured try directory remains the source of truth. TryStation scans only its immediate, non-hidden directories and does not maintain a separate project index. Git and project information is gathered through local, read-only inspection.
+
+TryStation delegates supported workflows to the surrounding Omarchy tools, but `try` currently has no documented, non-interactive command for creating a plain try. Quick Create therefore uses a small filesystem adapter that:
+
+1. Normalizes the entered name.
+2. Adds the same `YYYY-MM-DD-` prefix recognized by `try`.
+3. Adds a numeric suffix if that path already exists.
+4. Creates a normal directory and opens it in the default Omarchy editor.
+
+It does not modify the `try` executable, shell function, configuration, or files inside existing tries. Directories created by TryStation remain ordinary tries that can be opened, renamed, graduated, or deleted through the native CLI.
+
+Groups, notes, and pins are intentionally external to project directories. They are stored in `${XDG_STATE_HOME:-$HOME/.local/state}/trystation/metadata.json` and keyed by filesystem identity, allowing metadata to follow a try renamed by the CLI. Metadata writes occur only after editing events or explicit pin actions.
+
+There is no daemon, recurring scan, network access, or second Quickshell process. The summary and library refresh when opened, after relevant TryStation actions, or when explicitly requested.
 
 ## Requirements
 
@@ -110,6 +133,14 @@ omarchy-shell shell summon io.github.guillechuma.trystation '{"path":"~/src/trie
 - TryStation only trashes an immediate child of the configured try directory.
 - Graduated symlinks are unlinked; their destination project is never deleted.
 - Notes and groups remain local and are never written into repositories.
+
+## Current limitations
+
+- Only immediate directories under the configured try path are listed; nested project collections are not scanned.
+- Quick Create follows `try`'s directory convention but does not invoke the interactive CLI because `try` does not expose a documented `create` subcommand.
+- Native `try clone`, worktree, rename, and graduation workflows are not reproduced in TryStation; use the CLI for those operations.
+- External filesystem or Git changes made while the library is open appear after reopening it or using Refresh/`Ctrl+R`.
+- TryStation is an unsandboxed Omarchy shell plugin and runs with the permissions of the current user, like other shell plugins.
 
 ## Development
 
