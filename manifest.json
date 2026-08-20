@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.guillechuma.trystation",
+  "name": "TryStation",
+  "version": "0.1.0",
+  "author": "Guillermo Chumaceiro",
+  "license": "MIT",
+  "description": "A retro visual workbench for Tobi's try, turning ephemeral coding experiments into searchable, inspectable idea cartridges.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "TryStation",
+    "description": "Open the TryStation experiment workbench.",
+    "category": "Development",
+    "allowMultiple": false,
+    "defaultSection": "left",
+    "defaults": {
+      "triesPath": "~/Work/tries"
+    },
+    "schema": [
+      {
+        "key": "triesPath",
+        "type": "path",
+        "label": "Try directory",
+        "description": "The directory configured by try init.",
+        "defaultValue": "~/Work/tries"
+      }
+    ]
+  }
+}

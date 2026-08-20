@@ -1,0 +1,91 @@
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CLI = ROOT / "scripts" / "trystation.py"
+
+
+class TryStationCliTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name)
+        self.tries = self.base / "tries"
+        self.state = self.base / "state"
+        self.env = {**os.environ, "XDG_STATE_HOME": str(self.state)}
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def run_cli(self, *args):
+        return subprocess.run(
+            [str(CLI), *map(str, args)],
+            env=self.env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+
+    def listing(self):
+        result = self.run_cli("list", "--path", self.tries)
+        return json.loads(result.stdout)
+
+    def test_missing_directory_is_not_created_by_listing(self):
+        result = self.listing()
+        self.assertFalse(result["exists"])
+        self.assertEqual(result["sessions"], [])
+        self.assertFalse(self.tries.exists())
+
+    def test_create_uses_try_compatible_date_prefix_and_collision_suffix(self):
+        first = json.loads(self.run_cli("create", "--path", self.tries, "--name", "QML shader test").stdout)
+        second = json.loads(self.run_cli("create", "--path", self.tries, "--name", "QML shader test").stdout)
+        self.assertRegex(Path(first["path"]).name, r"^\d{4}-\d{2}-\d{2}-QML-shader-test$")
+        self.assertTrue(Path(second["path"]).name.endswith("-2"))
+        self.assertEqual(len(self.listing()["sessions"]), 2)
+
+    def test_listing_reports_git_and_project_information(self):
+        session = self.tries / "2026-08-12-widget-lab"
+        session.mkdir(parents=True)
+        (session / "package.json").write_text("{}")
+        (session / "README.md").write_text("# Widget Lab\nA useful experiment.")
+        subprocess.run(["git", "init", "-q", str(session)], check=True)
+        result = self.listing()["sessions"][0]
+        self.assertEqual(result["title"], "Widget Lab")
+        self.assertEqual(result["language"], "JavaScript")
+        self.assertTrue(result["git"])
+        self.assertGreaterEqual(result["changes"], 2)
+        self.assertIn("useful experiment", result["readme"])
+
+    def test_metadata_is_external_and_follows_cli_rename(self):
+        session = self.tries / "2026-08-12-first-name"
+        session.mkdir(parents=True)
+        self.run_cli(
+            "set-meta", "--root", self.tries, "--session", session,
+            "--group", "QML", "--note", "Try a shader", "--pinned",
+        )
+        renamed = self.tries / "2026-08-12-renamed"
+        session.rename(renamed)
+        result = self.listing()["sessions"][0]
+        self.assertEqual(result["group"], "QML")
+        self.assertEqual(result["note"], "Try a shader")
+        self.assertTrue(result["pinned"])
+        self.assertFalse((renamed / ".trystation.json").exists())
+
+    def test_graduated_symlink_is_visible(self):
+        self.tries.mkdir()
+        project = self.base / "projects" / "graduated"
+        project.mkdir(parents=True)
+        link = self.tries / "2026-08-12-graduated"
+        link.symlink_to(project, target_is_directory=True)
+        result = self.listing()["sessions"][0]
+        self.assertTrue(result["graduated"])
+        self.assertEqual(result["target"], str(project))
+
+
+if __name__ == "__main__":
+    unittest.main()
