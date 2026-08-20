@@ -575,6 +575,7 @@ Item {
             padding: Style.space(18)
 
             Column {
+              id: detailColumn
               anchors.fill: parent
               anchors.topMargin: parent.contentTopInset
               anchors.rightMargin: parent.contentRightInset
@@ -635,13 +636,18 @@ Item {
 
               Rectangle { width: parent.width; height: Style.spacing.hairline; color: Util.alpha(root.foreground, 0.14) }
 
-              Row {
+              Grid {
+                id: quickActions
                 width: parent.width
+                columns: width < Style.space(520) ? 2 : 4
                 spacing: Style.space(8)
-                Button { text: "TERMINAL"; iconText: ""; bordered: true; foreground: root.foreground; onClicked: root.openTerminal() }
-                Button { text: "EDITOR"; iconText: "󰨞"; bordered: true; foreground: root.foreground; onClicked: root.openEditor() }
-                Button { text: "FILES"; iconText: "󰉋"; bordered: true; foreground: root.foreground; onClicked: root.openFiles() }
-                Button { text: "COPY PATH"; iconText: "󰆏"; foreground: root.foreground; onClicked: root.copyPath() }
+                height: childrenRect.height
+                readonly property real cellWidth: (width - spacing * (columns - 1)) / columns
+
+                Button { width: quickActions.cellWidth; text: "TERMINAL"; iconText: ""; bordered: true; foreground: root.foreground; onClicked: root.openTerminal() }
+                Button { width: quickActions.cellWidth; text: "EDITOR"; iconText: "󰨞"; bordered: true; foreground: root.foreground; onClicked: root.openEditor() }
+                Button { width: quickActions.cellWidth; text: "FILES"; iconText: "󰉋"; bordered: true; foreground: root.foreground; onClicked: root.openFiles() }
+                Button { width: quickActions.cellWidth; text: "COPY PATH"; iconText: "󰆏"; bordered: true; foreground: root.foreground; onClicked: root.copyPath() }
               }
 
               Row {
@@ -686,7 +692,7 @@ Item {
 
               BorderSurface {
                 width: parent.width
-                height: Math.max(Style.space(82), parent.parent.height - parent.y - actionsRow.height - parent.parent.spacing)
+                height: Math.max(Style.space(82), detailColumn.height - y - actionsRow.implicitHeight - detailColumn.spacing)
                 color: Util.alpha(root.foreground, 0.025)
                 borderSpec: Border.controlSpec(noteField.activeFocus ? "focus" : "normal", root.foreground, root.accent)
                 radius: Style.cornerRadius
@@ -714,7 +720,7 @@ Item {
                 width: parent.width
                 spacing: Style.space(8)
                 Button {
-                  text: "SAVE LABEL"
+                  text: "SAVE DETAILS"
                   iconText: "󰆓"
                   bordered: true
                   foreground: root.foreground
