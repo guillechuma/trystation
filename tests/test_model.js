@@ -12,6 +12,8 @@ assert.equal(model.fuzzyFiltered(sessions, "sdr", 5)[0].title, "Shader Lab");
 assert.equal(model.fuzzyFiltered(sessions, "redis backend", 5)[0].title, "Redis Pool");
 assert.equal(model.fuzzyFiltered(sessions, "missing", 5).length, 0);
 assert.equal(model.fuzzyFiltered(sessions, "", 1).length, 1);
+assert.equal(model.sortedSessions(sessions)[0].title, "Shader Lab");
+assert.equal(model.sortedSessions([sessions[0], { ...sessions[1], pinned: true }])[0].title, "Redis Pool");
 assert.deepEqual(model.groups(sessions), ["Backend", "QML"]);
 assert.equal(model.statusLabel({ git: true, changes: 3 }), "DIRTY ×3");
 assert.equal(model.statusLabel({ graduated: true }), "GRADUATED");

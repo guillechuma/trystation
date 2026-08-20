@@ -223,21 +223,22 @@ Item {
       if (String(root.sessions[j].id) === String(sessionId))
         root.sessions[j].pinned = value
     }
-    if (root.activeSession && String(root.activeSession.sessionId) === String(sessionId))
-      root.draftPinned = value
+    root.sessions = TryModel.sortedSessions(root.sessions)
+    root.rebuildDisplay()
   }
 
   function togglePin() {
     var row = root.activeSession
     if (!row || pinProc.running) return
-    pinProc.sessionId = row.sessionId
+    var sessionPath = String(row.sessionPath)
+    pinProc.sessionId = String(row.sessionId)
     pinProc.previousValue = row.pinned
     pinProc.nextValue = !row.pinned
     root.setPinState(pinProc.sessionId, pinProc.nextValue)
     root.message = pinProc.nextValue ? "PINNING TRY…" : "UNPINNING TRY…"
     root.messageError = false
     pinProc.command = [root.helperPath, "set-pin", "--root", root.triesPath,
-                       "--session", row.sessionPath, "--pinned", pinProc.nextValue ? "true" : "false"]
+                       "--session", sessionPath, "--pinned", pinProc.nextValue ? "true" : "false"]
     pinProc.running = true
   }
 

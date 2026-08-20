@@ -109,6 +109,17 @@ function fuzzyFiltered(sessions, query, limit) {
   return ranked.slice(0, maximum).map(function(entry) { return entry.row })
 }
 
+function sortedSessions(sessions) {
+  var values = Array.isArray(sessions) ? sessions.slice() : []
+  values.sort(function(a, b) {
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1
+    var modified = Number(b.modified || 0) - Number(a.modified || 0)
+    if (modified !== 0) return modified
+    return String(a.name || "").localeCompare(String(b.name || ""))
+  })
+  return values
+}
+
 function groups(sessions) {
   var values = Array.isArray(sessions) ? sessions : []
   var seen = {}
@@ -147,6 +158,7 @@ if (typeof module !== "undefined") {
     fuzzyTokenScore: fuzzyTokenScore,
     fuzzyScore: fuzzyScore,
     fuzzyFiltered: fuzzyFiltered,
+    sortedSessions: sortedSessions,
     groups: groups,
     statusLabel: statusLabel,
     pathLabel: pathLabel
