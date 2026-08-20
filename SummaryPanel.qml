@@ -17,6 +17,7 @@ Panel {
   readonly property string triesPath: String(setting("triesPath", "~/Work/tries"))
 
   property var sessions: []
+  property string filterText: ""
   property int selectedIndex: 0
   property bool loading: false
   property bool createMode: false
@@ -30,6 +31,7 @@ Panel {
 
   function open() {
     root.createMode = false
+    searchField.text = ""
     root.controller.show()
     root.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
@@ -70,10 +72,17 @@ Panel {
   function applyListing(raw) {
     var listing = TryModel.parseListing(raw)
     root.sessions = listing.sessions
+    root.rebuildRecent()
+    root.loading = false
+    root.statusText = listing.sessions.length + " " + (listing.sessions.length === 1 ? "TRY" : "TRIES") + " AVAILABLE"
+    root.statusError = false
+  }
+
+  function rebuildRecent() {
+    var rows = TryModel.fuzzyFiltered(root.sessions, root.filterText, 5)
     recentModel.clear()
-    var limit = Math.min(5, listing.sessions.length)
-    for (var i = 0; i < limit; i++) {
-      var row = listing.sessions[i]
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i]
       recentModel.append({
         title: String(row.title || row.name || "Untitled"),
         sessionPath: String(row.path || ""),
@@ -88,9 +97,6 @@ Panel {
       })
     }
     root.selectedIndex = recentModel.count > 0 ? Math.min(root.selectedIndex, recentModel.count - 1) : 0
-    root.loading = false
-    root.statusText = listing.sessions.length + " CARTRIDGE" + (listing.sessions.length === 1 ? "" : "S") + " ONLINE"
-    root.statusError = false
   }
 
   function moveSelection(delta) {
@@ -108,7 +114,12 @@ Panel {
 
   function openSelectedTerminal() {
     if (!root.activeSession) return
-    var path = root.activeSession.sessionPath
+    root.openTerminalAt(root.selectedIndex)
+  }
+
+  function openTerminalAt(index) {
+    if (index < 0 || index >= recentModel.count) return
+    var path = recentModel.get(index).sessionPath
     root.close()
     Quickshell.execDetached(["xdg-terminal-exec", "--dir=" + path])
   }
@@ -149,7 +160,7 @@ Panel {
     onExited: function(exitCode) {
       if (exitCode === 0) {
         root.createMode = false
-        root.statusText = "CARTRIDGE CREATED"
+        root.statusText = "TRY CREATED"
         root.refresh()
         Qt.callLater(function() { keyCatcher.forceActiveFocus() })
       } else {
@@ -178,7 +189,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: createField.activeFocus
+      blocked: createField.activeFocus || searchField.activeFocus
       onMoveRequested: function(dx, dy) {
         if (dy !== 0) root.moveSelection(dy)
       }
@@ -186,7 +197,10 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(text) {
-        if (text === "n" || text === "N") root.openCreate()
+        var slot = Number(text)
+        if (slot >= 1 && slot <= 5) root.openTerminalAt(slot - 1)
+        else if (text === "/") searchField.forceActiveFocus()
+        else if (text === "n" || text === "N") root.openCreate()
         else if (text === "o" || text === "O") root.openLibrary()
         else if (text === "t" || text === "T") root.openSelectedTerminal()
         else if (text === "r" || text === "R") root.refresh()
@@ -239,6 +253,27 @@ Panel {
 
         PanelSeparator { foreground: root.contentForeground }
 
+        TextField {
+          id: searchField
+          width: parent.width
+          placeholderText: "Fuzzy search tries…  /"
+          foreground: root.contentForeground
+          onTextChanged: {
+            root.filterText = text
+            root.selectedIndex = 0
+            root.rebuildRecent()
+          }
+          onAccepted: root.openSelected()
+          Keys.onEscapePressed: {
+            if (text) text = ""
+            keyCatcher.forceActiveFocus()
+          }
+          Keys.onDownPressed: {
+            root.moveSelection(1)
+            keyCatcher.forceActiveFocus()
+          }
+        }
+
         ListView {
           id: recentList
           width: parent.width
@@ -270,9 +305,23 @@ Panel {
             accent: Color.accent
 
             Text {
-              id: rowIcon
+              id: shortcutNumber
               anchors.left: parent.left
-              anchors.leftMargin: Style.space(10)
+              anchors.leftMargin: Style.space(9)
+              anchors.verticalCenter: parent.verticalCenter
+              width: Style.space(18)
+              text: String(row.index + 1)
+              color: row.selectedRow ? Color.accent : Qt.darker(root.contentForeground, 1.7)
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              id: rowIcon
+              anchors.left: shortcutNumber.right
+              anchors.leftMargin: Style.space(4)
               anchors.verticalCenter: parent.verticalCenter
               width: Style.space(28)
               text: row.pinned ? "󰐃" : row.icon
@@ -344,7 +393,7 @@ Panel {
 
           Text {
             width: parent.width
-            text: "[ EMPTY DRIVE ]"
+            text: root.filterText ? "[ NO MATCHING TRIES ]" : "[ NO TRIES YET ]"
             color: Color.accent
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.title
@@ -353,7 +402,7 @@ Panel {
           }
           Text {
             width: parent.width
-            text: "Give your next idea a home."
+            text: root.filterText ? "Try another fuzzy search." : "Give your next idea a home."
             color: Qt.darker(root.contentForeground, 1.5)
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.bodySmall
@@ -441,7 +490,7 @@ Panel {
 
         Text {
           width: parent.width
-          text: "↑↓ SELECT  ·  ENTER EDIT  ·  T TERMINAL  ·  N NEW  ·  O LIBRARY"
+          text: "1–5 TERMINAL  ·  / SEARCH  ·  ENTER EDIT  ·  N NEW  ·  O LIBRARY"
           color: Qt.darker(root.contentForeground, 1.7)
           font.family: root.contentFontFamily
           font.pixelSize: Style.font.caption

@@ -69,7 +69,7 @@ Item {
   function refresh() {
     if (!root.helperPath || listProc.running) return
     root.loading = true
-    root.message = "SCANNING CARTRIDGES…"
+    root.message = "SCANNING TRIES…"
     root.messageError = false
     listProc.command = [root.helperPath, "list", "--path", root.triesPath]
     listProc.running = true
@@ -164,7 +164,7 @@ Item {
   function submitCreate() {
     if (!createField.text.trim() || actionProc.running) return
     root.createOpen = false
-    root.runAction(["create", "--path", root.triesPath, "--name", createField.text], "IDEA CARTRIDGE CREATED")
+    root.runAction(["create", "--path", root.triesPath, "--name", createField.text], "TRY CREATED")
   }
 
   function saveMetadata() {
@@ -173,7 +173,7 @@ Item {
     var args = ["set-meta", "--root", root.triesPath, "--session", row.sessionPath,
                 "--group", groupField.text, "--note", noteField.text]
     if (root.draftPinned) args.push("--pinned")
-    root.runAction(args, "CARTRIDGE LABEL SAVED")
+    root.runAction(args, "TRY DETAILS SAVED")
   }
 
   function requestTrash() {
@@ -474,7 +474,7 @@ Item {
                 radius: Style.cornerRadius
 
                 Text {
-                  id: cartridgeIcon
+                  id: tryIcon
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(12)
                   anchors.verticalCenter: parent.verticalCenter
@@ -487,7 +487,7 @@ Item {
                 }
 
                 Column {
-                  anchors.left: cartridgeIcon.right
+                  anchors.left: tryIcon.right
                   anchors.leftMargin: Style.space(10)
                   anchors.right: parent.right
                   anchors.rightMargin: Style.space(12)
@@ -668,7 +668,7 @@ Item {
               }
 
               Text {
-                text: "CARTRIDGE LABEL"
+                text: "TRY DETAILS"
                 color: root.dimForeground
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
@@ -736,7 +736,7 @@ Item {
             Text {
               anchors.centerIn: parent
               visible: root.activeSession === null
-              text: "SELECT A CARTRIDGE"
+              text: "SELECT A TRY"
               color: root.dimForeground
               font.family: root.fontFamily
               font.pixelSize: Style.font.title
@@ -798,7 +798,7 @@ Item {
             spacing: Style.space(14)
 
             Text {
-              text: "INSERT NEW IDEA CARTRIDGE"
+              text: "CREATE NEW TRY"
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.title

@@ -53,6 +53,62 @@ function filtered(sessions, query, group) {
   return out
 }
 
+function fuzzyTokenScore(text, token) {
+  var value = String(text || "").toLowerCase()
+  var needle = String(token || "").toLowerCase()
+  if (!needle) return 0
+
+  var exact = value.indexOf(needle)
+  if (exact >= 0) return exact
+
+  var score = 20
+  var previous = -1
+  var cursor = 0
+  for (var i = 0; i < needle.length; i++) {
+    var found = value.indexOf(needle.charAt(i), cursor)
+    if (found < 0) return Number.POSITIVE_INFINITY
+    if (previous >= 0) score += found - previous - 1
+    if (found === 0 || /[\s._/-]/.test(value.charAt(found - 1))) score -= 2
+    previous = found
+    cursor = found + 1
+  }
+  return score
+}
+
+function fuzzyScore(session, query) {
+  var terms = String(query || "").trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (terms.length === 0) return 0
+  var text = searchText(session)
+  var total = 0
+  for (var i = 0; i < terms.length; i++) {
+    var score = fuzzyTokenScore(text, terms[i])
+    if (!isFinite(score)) return Number.POSITIVE_INFINITY
+    total += score
+  }
+  return total
+}
+
+function fuzzyFiltered(sessions, query, limit) {
+  var values = Array.isArray(sessions) ? sessions : []
+  var needle = String(query || "").trim()
+  var maximum = Math.max(0, Number(limit || values.length))
+  if (!needle) return values.slice(0, maximum)
+
+  var ranked = []
+  for (var i = 0; i < values.length; i++) {
+    var score = fuzzyScore(values[i], needle)
+    if (isFinite(score)) ranked.push({ row: values[i], score: score, order: i })
+  }
+  ranked.sort(function(a, b) {
+    if (a.score !== b.score) return a.score - b.score
+    if (!!a.row.pinned !== !!b.row.pinned) return a.row.pinned ? -1 : 1
+    if (Number(a.row.modified || 0) !== Number(b.row.modified || 0))
+      return Number(b.row.modified || 0) - Number(a.row.modified || 0)
+    return a.order - b.order
+  })
+  return ranked.slice(0, maximum).map(function(entry) { return entry.row })
+}
+
 function groups(sessions) {
   var values = Array.isArray(sessions) ? sessions : []
   var seen = {}
@@ -88,6 +144,9 @@ if (typeof module !== "undefined") {
     relativeTime: relativeTime,
     searchText: searchText,
     filtered: filtered,
+    fuzzyTokenScore: fuzzyTokenScore,
+    fuzzyScore: fuzzyScore,
+    fuzzyFiltered: fuzzyFiltered,
     groups: groups,
     statusLabel: statusLabel,
     pathLabel: pathLabel
