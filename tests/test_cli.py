@@ -66,7 +66,7 @@ class TryStationCliTest(unittest.TestCase):
         session.mkdir(parents=True)
         self.run_cli(
             "set-meta", "--root", self.tries, "--session", session,
-            "--group", "QML", "--note", "Try a shader", "--pinned",
+            "--group", "QML", "--note", "Try a shader", "--pinned", "true",
         )
         renamed = self.tries / "2026-08-12-renamed"
         session.rename(renamed)
@@ -93,13 +93,22 @@ class TryStationCliTest(unittest.TestCase):
         self.assertEqual(pinned["note"], "Keep this note")
 
         self.run_cli(
+            "set-meta", "--root", self.tries, "--session", session,
+            "--group", "Experiments", "--note", "Updated note",
+        )
+        details_updated = self.listing()["sessions"][0]
+        self.assertTrue(details_updated["pinned"])
+        self.assertEqual(details_updated["group"], "Experiments")
+        self.assertEqual(details_updated["note"], "Updated note")
+
+        self.run_cli(
             "set-pin", "--root", self.tries, "--session", session,
             "--pinned", "false",
         )
         unpinned = self.listing()["sessions"][0]
         self.assertFalse(unpinned["pinned"])
-        self.assertEqual(unpinned["group"], "QML")
-        self.assertEqual(unpinned["note"], "Keep this note")
+        self.assertEqual(unpinned["group"], "Experiments")
+        self.assertEqual(unpinned["note"], "Updated note")
 
     def test_graduated_symlink_is_visible(self):
         self.tries.mkdir()

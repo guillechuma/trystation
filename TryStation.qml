@@ -31,6 +31,7 @@ Item {
   property bool draftPinned: false
   property var groupSuggestions: []
   property int groupSuggestionIndex: -1
+  property var pendingDetails: null
   property bool closingFromHost: false
 
   readonly property color background: Color.background
@@ -52,6 +53,7 @@ Item {
   }
 
   function close() {
+    root.persistDraft()
     root.closingFromHost = true
     root.createOpen = false
     root.deleteOpen = false
@@ -147,6 +149,55 @@ Item {
     groupPopup.close()
     groupField.forceActiveFocus()
     groupField.cursorPosition = groupField.text.length
+    root.persistDraft()
+  }
+
+  function persistDraft() {
+    var row = root.activeSession
+    if (!row) return
+    var group = groupField.text.trim()
+    var note = noteField.text.trim()
+    if (group === String(row.groupName || "") && note === String(row.note || "")) return
+
+    var payload = {
+      sessionId: String(row.sessionId),
+      sessionPath: String(row.sessionPath),
+      group: group,
+      note: note
+    }
+    if (metaProc.running) {
+      var current = metaProc.payload
+      if (current && current.sessionId === payload.sessionId
+          && current.group === payload.group && current.note === payload.note)
+        return
+      root.pendingDetails = payload
+      return
+    }
+    root.startDetailsSave(payload)
+  }
+
+  function startDetailsSave(payload) {
+    metaProc.payload = payload
+    metaProc.command = [root.helperPath, "set-meta", "--root", root.triesPath,
+                        "--session", payload.sessionPath, "--group", payload.group,
+                        "--note", payload.note]
+    root.message = "SAVING DETAILS…"
+    root.messageError = false
+    metaProc.running = true
+  }
+
+  function applySavedDetails(payload) {
+    for (var i = 0; i < displayModel.count; i++) {
+      if (String(displayModel.get(i).sessionId) !== payload.sessionId) continue
+      displayModel.setProperty(i, "groupName", payload.group)
+      displayModel.setProperty(i, "note", payload.note)
+    }
+    for (var j = 0; j < root.sessions.length; j++) {
+      if (String(root.sessions[j].id) !== payload.sessionId) continue
+      root.sessions[j].group = payload.group
+      root.sessions[j].note = payload.note
+    }
+    root.groupNames = TryModel.groups(root.sessions)
   }
 
   function syncDraft() {
@@ -192,6 +243,8 @@ Item {
 
   function selectIndex(index) {
     if (index < 0 || index >= displayModel.count) return
+    if (index === root.selectedIndex) return
+    root.persistDraft()
     root.selectedIndex = index
     root.syncDraft()
     sessionList.positionViewAtIndex(index, ListView.Contain)
@@ -203,6 +256,7 @@ Item {
   }
 
   function setGroup(group) {
+    root.persistDraft()
     root.selectedGroup = group
     root.selectedIndex = 0
     root.rebuildDisplay()
@@ -218,15 +272,6 @@ Item {
     if (!createField.text.trim() || actionProc.running) return
     root.createOpen = false
     root.runAction(["create", "--path", root.triesPath, "--name", createField.text], "TRY CREATED")
-  }
-
-  function saveMetadata() {
-    var row = root.activeSession
-    if (!row || actionProc.running) return
-    var args = ["set-meta", "--root", root.triesPath, "--session", row.sessionPath,
-                "--group", groupField.text, "--note", noteField.text]
-    if (root.draftPinned) args.push("--pinned")
-    root.runAction(args, "TRY DETAILS SAVED")
   }
 
   function requestTrash() {
@@ -312,6 +357,32 @@ Item {
   }
 
   Process {
+    id: metaProc
+    property var payload: null
+    stderr: StdioCollector { id: metaError; waitForEnd: true }
+    onExited: function(exitCode) {
+      var completed = metaProc.payload
+      if (exitCode === 0) {
+        root.applySavedDetails(completed)
+        root.message = "DETAILS SAVED"
+        root.messageError = false
+      } else {
+        var detail = metaError.text.trim()
+        try {
+          var parsed = JSON.parse(detail)
+          detail = parsed.error || detail
+        } catch (e) {}
+        root.message = detail || "COULD NOT SAVE DETAILS"
+        root.messageError = true
+      }
+
+      var pending = root.pendingDetails
+      root.pendingDetails = null
+      if (pending) Qt.callLater(function() { root.startDetailsSave(pending) })
+    }
+  }
+
+  Process {
     id: pinProc
     property string sessionId: ""
     property bool previousValue: false
@@ -339,7 +410,7 @@ Item {
     repeat: true
     running: root.opened
     onTriggered: {
-      if (!actionProc.running && !pinProc.running
+      if (!actionProc.running && !pinProc.running && !metaProc.running
           && !groupField.activeFocus && !noteField.activeFocus)
         root.refresh()
     }
@@ -355,6 +426,7 @@ Item {
     minimumSize: Qt.size(780, 540)
 
     onVisibleChanged: {
+      if (!visible) root.persistDraft()
       if (!visible && !root.closingFromHost && !root.hostWidget
           && root.shell && typeof root.shell.hide === "function")
         root.shell.hide(root.pluginId)
@@ -777,8 +849,12 @@ Item {
                   onTextChanged: root.updateGroupSuggestions()
                   onActiveFocusChanged: {
                     if (activeFocus) root.updateGroupSuggestions()
-                    else groupPopup.close()
+                    else {
+                      groupPopup.close()
+                      root.persistDraft()
+                    }
                   }
+                  onAccepted: root.persistDraft()
                   Keys.onPressed: function(event) {
                     if (event.key === Qt.Key_Down && root.groupSuggestions.length > 0) {
                       root.groupSuggestionIndex = Math.min(root.groupSuggestions.length - 1, root.groupSuggestionIndex + 1)
@@ -887,7 +963,17 @@ Item {
                   font.pixelSize: Style.font.body
                   wrapMode: TextEdit.Wrap
                   background: null
-                  Keys.onEscapePressed: root.syncDraft()
+                  onActiveFocusChanged: if (!activeFocus) root.persistDraft()
+                  Keys.onPressed: function(event) {
+                    if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                        && (event.modifiers & Qt.ControlModifier)) {
+                      root.persistDraft()
+                      event.accepted = true
+                    } else if (event.key === Qt.Key_Escape) {
+                      root.syncDraft()
+                      event.accepted = true
+                    }
+                  }
                 }
               }
 
@@ -895,17 +981,7 @@ Item {
                 id: actionsRow
                 width: parent.width
                 spacing: Style.space(8)
-                Button {
-                  text: "SAVE DETAILS"
-                  iconText: "󰆓"
-                  bordered: true
-                  foreground: root.foreground
-                  accent: root.accent
-                  enabled: !pinProc.running && !actionProc.running
-                  opacity: enabled ? 1 : 0.55
-                  onClicked: root.saveMetadata()
-                }
-                Item { width: parent.width - parent.children[0].width - trashButton.width - parent.spacing * 2; height: 1 }
+                Item { width: parent.width - trashButton.width; height: 1 }
                 Button {
                   id: trashButton
                   text: "TRASH"

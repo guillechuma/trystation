@@ -8,7 +8,9 @@ folder and stores optional presentation metadata in XDG state.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import datetime as dt
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -55,6 +57,18 @@ def save_metadata(value: dict[str, dict[str, Any]]) -> None:
             os.unlink(temporary)
         except FileNotFoundError:
             pass
+
+
+@contextmanager
+def locked_metadata():
+    path = state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_suffix(".lock")
+    with lock_path.open("a+") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        data = load_metadata()
+        yield data
+        save_metadata(data)
 
 
 def identity(path: Path) -> str:
@@ -208,30 +222,35 @@ def require_child(root_value: str, child_value: str) -> tuple[Path, Path]:
 
 def command_meta(args: argparse.Namespace) -> int:
     _, child = require_child(args.root, args.session)
-    data = load_metadata()
     key = identity(child)
     group = args.group.strip()[:80]
     note = args.note.strip()[:1000]
-    if group or note or args.pinned:
-        data[key] = {"group": group, "note": note, "pinned": args.pinned}
-    else:
-        data.pop(key, None)
-    save_metadata(data)
+    with locked_metadata() as data:
+        entry = dict(data.get(key, {}))
+        entry["group"] = group
+        entry["note"] = note
+        if args.pinned is not None:
+            entry["pinned"] = args.pinned == "true"
+        pinned = bool(entry.get("pinned", False))
+        if group or note or pinned:
+            entry["pinned"] = pinned
+            data[key] = entry
+        else:
+            data.pop(key, None)
     print(json.dumps({"ok": True, "id": key}))
     return 0
 
 
 def command_pin(args: argparse.Namespace) -> int:
     _, child = require_child(args.root, args.session)
-    data = load_metadata()
     key = identity(child)
-    entry = dict(data.get(key, {}))
-    entry["pinned"] = args.pinned == "true"
-    if entry.get("group") or entry.get("note") or entry["pinned"]:
-        data[key] = entry
-    else:
-        data.pop(key, None)
-    save_metadata(data)
+    with locked_metadata() as data:
+        entry = dict(data.get(key, {}))
+        entry["pinned"] = args.pinned == "true"
+        if entry.get("group") or entry.get("note") or entry["pinned"]:
+            data[key] = entry
+        else:
+            data.pop(key, None)
     print(json.dumps({"ok": True, "id": key, "pinned": entry["pinned"]}))
     return 0
 
@@ -245,10 +264,8 @@ def command_trash(args: argparse.Namespace) -> int:
         proc = subprocess.run(["gio", "trash", str(child)], check=False)
         if proc.returncode != 0:
             raise RuntimeError("Could not move the session to trash")
-    metadata = load_metadata()
-    if key in metadata:
-        del metadata[key]
-        save_metadata(metadata)
+    with locked_metadata() as metadata:
+        metadata.pop(key, None)
     print(json.dumps({"ok": True}))
     return 0
 
@@ -271,7 +288,7 @@ def build_parser() -> argparse.ArgumentParser:
     meta.add_argument("--session", required=True)
     meta.add_argument("--group", default="")
     meta.add_argument("--note", default="")
-    meta.add_argument("--pinned", action="store_true")
+    meta.add_argument("--pinned", choices=("true", "false"), default=None)
     meta.set_defaults(handler=command_meta)
 
     pin = sub.add_parser("set-pin")
