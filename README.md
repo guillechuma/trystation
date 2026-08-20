@@ -19,7 +19,7 @@ TryStation is an Omarchy Quattro plugin for the experiment directories already m
 - Open a try in the Omarchy editor, terminal, or file manager
 - Copy its path or safely move it to the desktop trash
 - Follow graduated symlinks created by `try`
-- Refresh automatically while the window is open
+- Refresh on open, after TryStation changes, or explicitly through the refresh action
 
 The filesystem remains the source of truth. TryStation scans the immediate directories under the configured try path, just as `try` does. Optional labels are kept separately in `$XDG_STATE_HOME/trystation/metadata.json` and keyed by filesystem identity, so groups survive CLI renames.
 

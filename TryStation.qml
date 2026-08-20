@@ -405,17 +405,6 @@ Item {
     }
   }
 
-  Timer {
-    interval: 15000
-    repeat: true
-    running: root.opened
-    onTriggered: {
-      if (!actionProc.running && !pinProc.running && !metaProc.running
-          && !groupField.activeFocus && !noteField.activeFocus)
-        root.refresh()
-    }
-  }
-
   FloatingWindow {
     id: stationWindow
     title: "TryStation"
