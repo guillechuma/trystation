@@ -221,6 +221,21 @@ def command_meta(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_pin(args: argparse.Namespace) -> int:
+    _, child = require_child(args.root, args.session)
+    data = load_metadata()
+    key = identity(child)
+    entry = dict(data.get(key, {}))
+    entry["pinned"] = args.pinned == "true"
+    if entry.get("group") or entry.get("note") or entry["pinned"]:
+        data[key] = entry
+    else:
+        data.pop(key, None)
+    save_metadata(data)
+    print(json.dumps({"ok": True, "id": key, "pinned": entry["pinned"]}))
+    return 0
+
+
 def command_trash(args: argparse.Namespace) -> int:
     _, child = require_child(args.root, args.session)
     key = identity(child)
@@ -258,6 +273,12 @@ def build_parser() -> argparse.ArgumentParser:
     meta.add_argument("--note", default="")
     meta.add_argument("--pinned", action="store_true")
     meta.set_defaults(handler=command_meta)
+
+    pin = sub.add_parser("set-pin")
+    pin.add_argument("--root", required=True)
+    pin.add_argument("--session", required=True)
+    pin.add_argument("--pinned", choices=("true", "false"), required=True)
+    pin.set_defaults(handler=command_pin)
 
     trash = sub.add_parser("trash")
     trash.add_argument("--root", required=True)

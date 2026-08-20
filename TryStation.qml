@@ -29,6 +29,8 @@ Item {
   property bool createOpen: false
   property bool deleteOpen: false
   property bool draftPinned: false
+  property var groupSuggestions: []
+  property int groupSuggestionIndex: -1
   property bool closingFromHost: false
 
   readonly property color background: Color.background
@@ -124,6 +126,29 @@ Item {
     })
   }
 
+  function updateGroupSuggestions() {
+    var needle = groupField.text.trim().toLowerCase()
+    var out = []
+    for (var i = 0; i < root.groupNames.length; i++) {
+      var group = String(root.groupNames[i] || "")
+      if (!group || group.toLowerCase() === needle) continue
+      if (!needle || group.toLowerCase().indexOf(needle) !== -1) out.push(group)
+      if (out.length >= 6) break
+    }
+    root.groupSuggestions = out
+    root.groupSuggestionIndex = out.length > 0 ? 0 : -1
+    if (groupField.activeFocus && out.length > 0) groupPopup.open()
+    else groupPopup.close()
+  }
+
+  function applyGroupSuggestion(index) {
+    if (index < 0 || index >= root.groupSuggestions.length) return
+    groupField.text = root.groupSuggestions[index]
+    groupPopup.close()
+    groupField.forceActiveFocus()
+    groupField.cursorPosition = groupField.text.length
+  }
+
   function syncDraft() {
     var row = root.activeSession
     if (!row) {
@@ -135,6 +160,34 @@ Item {
     groupField.text = row.groupName
     noteField.text = row.note
     root.draftPinned = row.pinned
+    root.updateGroupSuggestions()
+  }
+
+  function setPinState(sessionId, value) {
+    for (var i = 0; i < displayModel.count; i++) {
+      if (String(displayModel.get(i).sessionId) === String(sessionId))
+        displayModel.setProperty(i, "pinned", value)
+    }
+    for (var j = 0; j < root.sessions.length; j++) {
+      if (String(root.sessions[j].id) === String(sessionId))
+        root.sessions[j].pinned = value
+    }
+    if (root.activeSession && String(root.activeSession.sessionId) === String(sessionId))
+      root.draftPinned = value
+  }
+
+  function togglePin() {
+    var row = root.activeSession
+    if (!row || pinProc.running) return
+    pinProc.sessionId = row.sessionId
+    pinProc.previousValue = row.pinned
+    pinProc.nextValue = !row.pinned
+    root.setPinState(pinProc.sessionId, pinProc.nextValue)
+    root.message = pinProc.nextValue ? "PINNING TRY…" : "UNPINNING TRY…"
+    root.messageError = false
+    pinProc.command = [root.helperPath, "set-pin", "--root", root.triesPath,
+                       "--session", row.sessionPath, "--pinned", pinProc.nextValue ? "true" : "false"]
+    pinProc.running = true
   }
 
   function selectIndex(index) {
@@ -258,11 +311,38 @@ Item {
     }
   }
 
+  Process {
+    id: pinProc
+    property string sessionId: ""
+    property bool previousValue: false
+    property bool nextValue: false
+    stderr: StdioCollector { id: pinError; waitForEnd: true }
+    onExited: function(exitCode) {
+      if (exitCode === 0) {
+        root.message = pinProc.nextValue ? "TRY PINNED" : "TRY UNPINNED"
+        root.messageError = false
+      } else {
+        root.setPinState(pinProc.sessionId, pinProc.previousValue)
+        var detail = pinError.text.trim()
+        try {
+          var parsed = JSON.parse(detail)
+          detail = parsed.error || detail
+        } catch (e) {}
+        root.message = detail || "COULD NOT UPDATE PIN"
+        root.messageError = true
+      }
+    }
+  }
+
   Timer {
     interval: 15000
     repeat: true
     running: root.opened
-    onTriggered: if (!actionProc.running) root.refresh()
+    onTriggered: {
+      if (!actionProc.running && !pinProc.running
+          && !groupField.activeFocus && !noteField.activeFocus)
+        root.refresh()
+    }
   }
 
   FloatingWindow {
@@ -630,7 +710,9 @@ Item {
                   selected: root.draftPinned
                   foreground: root.foreground
                   accent: root.accent
-                  onClicked: root.draftPinned = !root.draftPinned
+                  enabled: !pinProc.running
+                  opacity: enabled ? 1 : 0.55
+                  onClicked: root.togglePin()
                 }
               }
 
@@ -682,12 +764,106 @@ Item {
                 font.letterSpacing: 1
               }
 
-              TextField {
-                id: groupField
+              Item {
                 width: parent.width
-                placeholderText: "Group (for example: Prototypes)"
-                foreground: root.foreground
-                Keys.onEscapePressed: root.syncDraft()
+                height: groupField.implicitHeight
+
+                TextField {
+                  id: groupField
+                  anchors.fill: parent
+                  placeholderText: "Group (type a new one or choose an existing group)"
+                  foreground: root.foreground
+                  rightPadding: Style.space(34)
+                  onTextChanged: root.updateGroupSuggestions()
+                  onActiveFocusChanged: {
+                    if (activeFocus) root.updateGroupSuggestions()
+                    else groupPopup.close()
+                  }
+                  Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Down && root.groupSuggestions.length > 0) {
+                      root.groupSuggestionIndex = Math.min(root.groupSuggestions.length - 1, root.groupSuggestionIndex + 1)
+                      groupPopup.open()
+                      event.accepted = true
+                    } else if (event.key === Qt.Key_Up && groupPopup.opened) {
+                      root.groupSuggestionIndex = Math.max(0, root.groupSuggestionIndex - 1)
+                      event.accepted = true
+                    } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && groupPopup.opened) {
+                      root.applyGroupSuggestion(root.groupSuggestionIndex)
+                      event.accepted = true
+                    } else if (event.key === Qt.Key_Escape) {
+                      if (groupPopup.opened) groupPopup.close()
+                      else root.syncDraft()
+                      event.accepted = true
+                    }
+                  }
+                }
+
+                Text {
+                  anchors.right: groupField.right
+                  anchors.rightMargin: Style.space(10)
+                  anchors.verticalCenter: groupField.verticalCenter
+                  text: "󰅀"
+                  color: root.dimForeground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                }
+
+                Controls.Popup {
+                  id: groupPopup
+                  x: 0
+                  y: groupField.height + Style.space(3)
+                  width: groupField.width
+                  height: Math.min(root.groupSuggestions.length, 6) * Style.space(36) + Style.spacing.hairline * 2
+                  padding: Style.spacing.hairline
+                  closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
+
+                  background: BorderSurface {
+                    color: Color.popups.background
+                    borderSpec: Border.localOrSurfaceSpec("popups", "border", Color.popups.border, Color.popups.border, Style.normalBorderWidth)
+                    radius: Style.cornerRadius
+                  }
+
+                  contentItem: ListView {
+                    id: groupSuggestionList
+                    model: root.groupSuggestions
+                    clip: true
+                    spacing: 0
+                    currentIndex: root.groupSuggestionIndex
+
+                    delegate: Rectangle {
+                      required property int index
+                      required property string modelData
+                      width: ListView.view.width
+                      height: Style.space(36)
+                      color: index === root.groupSuggestionIndex
+                        ? Style.hoverFillFor(root.foreground, root.accent)
+                        : "transparent"
+
+                      Text {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: Style.space(10)
+                        anchors.rightMargin: Style.space(10)
+                        text: parent.modelData
+                        color: parent.index === root.groupSuggestionIndex
+                          ? Style.hoverStateColor(root.foreground, root.accent)
+                          : Color.popups.text
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.body
+                        elide: Text.ElideRight
+                      }
+
+                      MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: root.groupSuggestionIndex = parent.index
+                        onClicked: root.applyGroupSuggestion(parent.index)
+                      }
+                    }
+                  }
+                }
               }
 
               BorderSurface {
@@ -725,6 +901,8 @@ Item {
                   bordered: true
                   foreground: root.foreground
                   accent: root.accent
+                  enabled: !pinProc.running && !actionProc.running
+                  opacity: enabled ? 1 : 0.55
                   onClicked: root.saveMetadata()
                 }
                 Item { width: parent.width - parent.children[0].width - trashButton.width - parent.spacing * 2; height: 1 }

@@ -76,6 +76,31 @@ class TryStationCliTest(unittest.TestCase):
         self.assertTrue(result["pinned"])
         self.assertFalse((renamed / ".trystation.json").exists())
 
+    def test_pin_update_preserves_group_and_note(self):
+        session = self.tries / "2026-08-12-pinned"
+        session.mkdir(parents=True)
+        self.run_cli(
+            "set-meta", "--root", self.tries, "--session", session,
+            "--group", "QML", "--note", "Keep this note",
+        )
+        self.run_cli(
+            "set-pin", "--root", self.tries, "--session", session,
+            "--pinned", "true",
+        )
+        pinned = self.listing()["sessions"][0]
+        self.assertTrue(pinned["pinned"])
+        self.assertEqual(pinned["group"], "QML")
+        self.assertEqual(pinned["note"], "Keep this note")
+
+        self.run_cli(
+            "set-pin", "--root", self.tries, "--session", session,
+            "--pinned", "false",
+        )
+        unpinned = self.listing()["sessions"][0]
+        self.assertFalse(unpinned["pinned"])
+        self.assertEqual(unpinned["group"], "QML")
+        self.assertEqual(unpinned["note"], "Keep this note")
+
     def test_graduated_symlink_is_visible(self):
         self.tries.mkdir()
         project = self.base / "projects" / "graduated"
