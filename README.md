@@ -15,7 +15,7 @@ TryStation is an Omarchy Quattro plugin for the experiment directories already m
 - Inspect Git status, worktree state, stack, README summary, and activity time
 - Create date-prefixed tries compatible with the CLI and open them immediately in the default editor
 - Reuse existing groups through autocomplete or type a new group to create it
-- Event-based autosave for groups and notes, plus instant pin/unpin, without changing the try directory layout
+- Event-based autosave for groups and notes, plus instant pin/unpin from the library or summary
 - Open a try in the Omarchy editor, terminal, or file manager
 - Copy its path or safely move it to the desktop trash
 - Follow graduated symlinks created by `try`
@@ -85,6 +85,7 @@ omarchy-shell shell summon io.github.guillechuma.trystation '{"path":"~/src/trie
 | `↑` / `↓`, `j` / `k` | Select a recent or matching try |
 | `Enter` | Open the selected try in the default editor |
 | `T` | Open the selected try in a terminal |
+| `P` | Pin or unpin the selected try |
 | `N` | Create a try |
 | `O` | Open the full library |
 | `R` | Refresh |

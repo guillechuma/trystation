@@ -78,12 +78,15 @@ Panel {
     root.statusError = false
   }
 
-  function rebuildRecent() {
+  function rebuildRecent(preferredId) {
+    var selectedId = preferredId || (root.activeSession ? String(root.activeSession.sessionId) : "")
     var rows = TryModel.fuzzyFiltered(root.sessions, root.filterText, 5)
     recentModel.clear()
+    var restoredIndex = -1
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i]
       recentModel.append({
+        sessionId: String(row.id || ""),
         title: String(row.title || row.name || "Untitled"),
         sessionPath: String(row.path || ""),
         modified: Number(row.modified || 0),
@@ -95,8 +98,39 @@ Panel {
         pinned: row.pinned === true,
         graduated: row.graduated === true
       })
+      if (String(row.id || "") === selectedId) restoredIndex = i
     }
-    root.selectedIndex = recentModel.count > 0 ? Math.min(root.selectedIndex, recentModel.count - 1) : 0
+    if (recentModel.count === 0) root.selectedIndex = 0
+    else root.selectedIndex = restoredIndex >= 0 ? restoredIndex : Math.min(root.selectedIndex, recentModel.count - 1)
+  }
+
+  function setPinState(sessionId, value) {
+    for (var i = 0; i < root.sessions.length; i++) {
+      if (String(root.sessions[i].id) === String(sessionId))
+        root.sessions[i].pinned = value
+    }
+    root.sessions = TryModel.sortedSessions(root.sessions)
+    root.rebuildRecent(String(sessionId))
+  }
+
+  function togglePinAt(index) {
+    if (index < 0 || index >= recentModel.count || pinProc.running) return
+    var row = recentModel.get(index)
+    pinProc.sessionId = String(row.sessionId)
+    pinProc.sessionPath = String(row.sessionPath)
+    pinProc.previousValue = row.pinned
+    pinProc.nextValue = !row.pinned
+    root.setPinState(pinProc.sessionId, pinProc.nextValue)
+    root.statusText = pinProc.nextValue ? "PINNING TRY…" : "UNPINNING TRY…"
+    root.statusError = false
+    pinProc.command = [root.helperPath, "set-pin", "--root", root.triesPath,
+                       "--session", pinProc.sessionPath,
+                       "--pinned", pinProc.nextValue ? "true" : "false"]
+    pinProc.running = true
+  }
+
+  function toggleSelectedPin() {
+    root.togglePinAt(root.selectedIndex)
   }
 
   function moveSelection(delta) {
@@ -188,6 +222,30 @@ Panel {
     }
   }
 
+  Process {
+    id: pinProc
+    property string sessionId: ""
+    property string sessionPath: ""
+    property bool previousValue: false
+    property bool nextValue: false
+    stderr: StdioCollector { id: pinError; waitForEnd: true }
+    onExited: function(exitCode) {
+      if (exitCode === 0) {
+        root.statusText = pinProc.nextValue ? "TRY PINNED" : "TRY UNPINNED"
+        root.statusError = false
+      } else {
+        root.setPinState(pinProc.sessionId, pinProc.previousValue)
+        var detail = pinError.text.trim()
+        try {
+          var parsed = JSON.parse(detail)
+          detail = parsed.error || detail
+        } catch (e) {}
+        root.statusText = detail || "COULD NOT UPDATE PIN"
+        root.statusError = true
+      }
+    }
+  }
+
   KeyboardPanel {
     id: panel
     anchorItem: root.anchorItem
@@ -212,6 +270,7 @@ Panel {
         var slot = Number(text)
         if (slot >= 1 && slot <= 5) root.openTerminalAt(slot - 1)
         else if (text === "/") searchField.forceActiveFocus()
+        else if (text === "p" || text === "P") root.toggleSelectedPin()
         else if (text === "n" || text === "N") root.openCreate()
         else if (text === "o" || text === "O") root.openLibrary()
         else if (text === "t" || text === "T") root.openSelectedTerminal()
@@ -298,6 +357,7 @@ Panel {
           delegate: CursorSurface {
             id: row
             required property int index
+            required property string sessionId
             required property string title
             required property string sessionPath
             required property int modified
@@ -336,7 +396,7 @@ Panel {
               anchors.leftMargin: Style.space(4)
               anchors.verticalCenter: parent.verticalCenter
               width: Style.space(28)
-              text: row.pinned ? "󰐃" : row.icon
+              text: row.icon
               color: row.selectedRow ? Color.accent : root.contentForeground
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.iconLarge
@@ -346,8 +406,8 @@ Panel {
             Column {
               anchors.left: rowIcon.right
               anchors.leftMargin: Style.space(8)
-              anchors.right: parent.right
-              anchors.rightMargin: Style.space(10)
+              anchors.right: pinAction.left
+              anchors.rightMargin: Style.space(6)
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(3)
 
@@ -383,7 +443,35 @@ Panel {
               }
             }
 
+            Item {
+              id: pinAction
+              width: Style.space(34)
+              height: parent.height
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(4)
+              visible: row.pinned || row.selectedRow || rowMouse.containsMouse
+              z: 2
+
+              Text {
+                anchors.centerIn: parent
+                text: row.pinned ? "󰐃" : "󰤱"
+                color: row.pinned ? Color.accent : Qt.darker(root.contentForeground, 1.5)
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.icon
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                enabled: !pinProc.running
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onEntered: root.selectedIndex = row.index
+                onClicked: root.togglePinAt(row.index)
+              }
+            }
+
             MouseArea {
+              id: rowMouse
               anchors.fill: parent
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
@@ -502,7 +590,7 @@ Panel {
 
         Text {
           width: parent.width
-          text: "1–5 TERMINAL  ·  / SEARCH  ·  ENTER EDIT  ·  N NEW  ·  O LIBRARY"
+          text: "1–5 TERMINAL  ·  / SEARCH  ·  P PIN  ·  ENTER EDIT  ·  N NEW  ·  O LIBRARY"
           color: Qt.darker(root.contentForeground, 1.7)
           font.family: root.contentFontFamily
           font.pixelSize: Style.font.caption
