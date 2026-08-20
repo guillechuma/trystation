@@ -139,7 +139,7 @@ Panel {
     recentList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
   }
 
-  function openSelected() {
+  function openSelectedEditor() {
     if (!root.activeSession) return
     var path = root.activeSession.sessionPath
     root.close()
@@ -263,7 +263,7 @@ Panel {
       onMoveRequested: function(dx, dy) {
         if (dy !== 0) root.moveSelection(dy)
       }
-      onActivateRequested: root.openSelected()
+      onActivateRequested: root.openSelectedTerminal()
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(text) {
@@ -274,6 +274,7 @@ Panel {
         else if (text === "n" || text === "N") root.openCreate()
         else if (text === "o" || text === "O") root.openLibrary()
         else if (text === "t" || text === "T") root.openSelectedTerminal()
+        else if (text === "e" || text === "E") root.openSelectedEditor()
         else if (text === "r" || text === "R") root.refresh()
       }
 
@@ -334,7 +335,7 @@ Panel {
             root.selectedIndex = 0
             root.rebuildRecent()
           }
-          onAccepted: root.openSelected()
+          onAccepted: root.openSelectedTerminal()
           Keys.onEscapePressed: {
             if (text) text = ""
             keyCatcher.forceActiveFocus()
@@ -478,7 +479,7 @@ Panel {
               onEntered: root.selectedIndex = row.index
               onClicked: {
                 root.selectedIndex = row.index
-                root.openSelected()
+                root.openSelectedTerminal()
               }
             }
           }
@@ -590,7 +591,7 @@ Panel {
 
         Text {
           width: parent.width
-          text: "1–5 TERMINAL  ·  / SEARCH  ·  P PIN  ·  ENTER EDIT  ·  N NEW  ·  O LIBRARY"
+          text: "1–5/ENTER TERMINAL  ·  E EDIT  ·  / SEARCH  ·  P PIN  ·  N NEW  ·  O LIBRARY"
           color: Qt.darker(root.contentForeground, 1.7)
           font.family: root.contentFontFamily
           font.pixelSize: Style.font.caption

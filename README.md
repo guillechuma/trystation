@@ -72,7 +72,7 @@ The plugin is added to the left section of the bar:
 - **Right-click** opens the full TryStation library.
 - **Middle-click** opens the quick-create form.
 
-From the summary, select a try to open it in the editor, press `T` for a terminal, or choose **Open Library** for the full interface.
+From the summary, select a try to open it in a terminal, press `E` for the editor, or choose **Open Library** for the full interface.
 
 You can also summon it directly:
 
@@ -106,8 +106,9 @@ omarchy-shell shell summon io.github.guillechuma.trystation '{"path":"~/src/trie
 | `1`–`5` | Open the corresponding visible try in a terminal |
 | `/` | Focus fuzzy search |
 | `↑` / `↓`, `j` / `k` | Select a recent or matching try |
-| `Enter` | Open the selected try in the default editor |
+| `Enter` | Open the selected try in a terminal |
 | `T` | Open the selected try in a terminal |
+| `E` | Open the selected try in the default editor |
 | `P` | Pin or unpin the selected try |
 | `N` | Create a try |
 | `O` | Open the full library |
