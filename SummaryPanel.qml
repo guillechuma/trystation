@@ -171,6 +171,10 @@ Panel {
     createProc.running = true
   }
 
+  component SafeText: Text {
+    textFormat: Text.PlainText
+  }
+
   ListModel { id: recentModel }
 
   Process {
@@ -291,7 +295,7 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Style.space(1)
 
-            Text {
+            SafeText {
               text: "TRY//STATION"
               color: root.contentForeground
               font.family: root.contentFontFamily
@@ -300,7 +304,7 @@ Panel {
               font.letterSpacing: 1.5
             }
 
-            Text {
+            SafeText {
               text: root.statusText
               color: root.statusError ? Color.urgent : (root.loading ? Qt.darker(root.contentForeground, 1.5) : Color.accent)
               font.family: root.contentFontFamily
@@ -375,7 +379,7 @@ Panel {
             foreground: root.contentForeground
             accent: Color.accent
 
-            Text {
+            SafeText {
               id: shortcutNumber
               anchors.left: parent.left
               anchors.leftMargin: Style.space(9)
@@ -389,7 +393,7 @@ Panel {
               horizontalAlignment: Text.AlignHCenter
             }
 
-            Text {
+            SafeText {
               id: rowIcon
               anchors.left: shortcutNumber.right
               anchors.leftMargin: Style.space(4)
@@ -412,7 +416,7 @@ Panel {
 
               Row {
                 width: parent.width
-                Text {
+                SafeText {
                   width: parent.width - ageText.width
                   text: row.title
                   color: root.contentForeground
@@ -421,7 +425,7 @@ Panel {
                   font.bold: row.selectedRow
                   elide: Text.ElideRight
                 }
-                Text {
+                SafeText {
                   id: ageText
                   text: TryModel.relativeTime(row.modified)
                   color: Qt.darker(root.contentForeground, 1.5)
@@ -430,7 +434,7 @@ Panel {
                 }
               }
 
-              Text {
+              SafeText {
                 width: parent.width
                 readonly property string usefulBranch: row.branch
                   && row.branch.toLowerCase() !== "main"
@@ -455,7 +459,7 @@ Panel {
               visible: row.pinned || row.selectedRow
               z: 2
 
-              Text {
+              SafeText {
                 anchors.centerIn: parent
                 text: row.pinned ? "󰐃" : "󰤱"
                 color: row.pinned ? Color.accent : Qt.darker(root.contentForeground, 1.5)
@@ -494,7 +498,7 @@ Panel {
           topPadding: Style.space(12)
           bottomPadding: Style.space(12)
 
-          Text {
+          SafeText {
             width: parent.width
             text: root.filterText ? "[ NO MATCHING TRIES ]" : "[ NO TRIES YET ]"
             color: Color.accent
@@ -503,7 +507,7 @@ Panel {
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
           }
-          Text {
+          SafeText {
             width: parent.width
             text: root.filterText ? "Try another fuzzy search." : "Give your next idea a home."
             color: Qt.darker(root.contentForeground, 1.5)
@@ -591,7 +595,7 @@ Panel {
           }
         }
 
-        Text {
+        SafeText {
           width: parent.width
           text: "1–5/ENTER TERMINAL  ·  E EDIT  ·  / SEARCH  ·  P PIN  ·  N NEW  ·  O LIBRARY"
           color: Qt.darker(root.contentForeground, 1.7)

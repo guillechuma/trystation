@@ -44,6 +44,13 @@ Item {
   readonly property var activeSession: displayModel.count > 0 && selectedIndex >= 0 && selectedIndex < displayModel.count
     ? displayModel.get(selectedIndex) : null
 
+  // Shared buttons and dialogs render AutoText internally. Neutralize markup
+  // delimiters before passing local filesystem metadata into those controls.
+  function plainForAutoText(value) {
+    return String(value === undefined || value === null ? "" : value)
+      .replace(/</g, "‹").replace(/>/g, "›")
+  }
+
   function open(payloadJson) {
     var payload = TryModel.parsePayload(payloadJson)
     if (payload.path) root.triesPath = String(payload.path)
@@ -465,7 +472,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Style.space(2)
 
-            Text {
+            SafeText {
               text: "TRY//STATION"
               color: root.foreground
               font.family: root.fontFamily
@@ -474,7 +481,7 @@ Item {
               font.letterSpacing: 2
             }
 
-            Text {
+            SafeText {
               width: parent.width
               text: "EPHEMERAL IDEA WORKBENCH  ·  " + TryModel.pathLabel(root.triesPath, root.homePath)
               color: root.dimForeground
@@ -561,7 +568,7 @@ Item {
                 model: root.groupNames
                 Button {
                   required property string modelData
-                  text: modelData.toUpperCase()
+                  text: root.plainForAutoText(modelData.toUpperCase())
                   selected: root.selectedGroup === modelData
                   foreground: root.foreground
                   accent: root.accent
@@ -620,7 +627,7 @@ Item {
                 borderSpec: selectedRow ? Border.controlSpec("hover-cursor", root.foreground, root.accent) : Border.none()
                 radius: Style.cornerRadius
 
-                Text {
+                SafeText {
                   id: tryIcon
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(12)
@@ -643,7 +650,7 @@ Item {
 
                   Row {
                     width: parent.width
-                    Text {
+                    SafeText {
                       width: parent.width - ageLabel.width
                       text: sessionRow.title
                       color: root.foreground
@@ -652,7 +659,7 @@ Item {
                       font.bold: sessionRow.selectedRow
                       elide: Text.ElideRight
                     }
-                    Text {
+                    SafeText {
                       id: ageLabel
                       text: TryModel.relativeTime(sessionRow.modified)
                       color: root.dimForeground
@@ -661,7 +668,7 @@ Item {
                     }
                   }
 
-                  Text {
+                  SafeText {
                     width: parent.width
                     text: (sessionRow.groupName ? sessionRow.groupName.toUpperCase() + "  ·  " : "")
                       + sessionRow.language + "  ·  "
@@ -691,7 +698,7 @@ Item {
               spacing: Style.space(10)
               visible: displayModel.count === 0
 
-              Text {
+              SafeText {
                 width: parent.width
                 text: root.sessions.length === 0 ? "[ EMPTY DRIVE ]" : "[ NO MATCHES ]"
                 color: root.accent
@@ -701,7 +708,7 @@ Item {
                 font.letterSpacing: 1
                 horizontalAlignment: Text.AlignHCenter
               }
-              Text {
+              SafeText {
                 width: parent.width
                 text: root.sessions.length === 0 ? "Create a try and give that idea a home." : "Change the search or group filter."
                 color: root.dimForeground
@@ -736,7 +743,7 @@ Item {
                 height: Style.space(48)
                 spacing: Style.space(12)
 
-                Text {
+                SafeText {
                   width: Style.space(42)
                   anchors.verticalCenter: parent.verticalCenter
                   text: root.activeSession ? root.activeSession.icon : ""
@@ -750,7 +757,7 @@ Item {
                   width: parent.width - Style.space(42) - pinButton.width - parent.spacing * 2
                   anchors.verticalCenter: parent.verticalCenter
                   spacing: Style.space(2)
-                  Text {
+                  SafeText {
                     width: parent.width
                     text: root.activeSession ? root.activeSession.title : ""
                     color: root.foreground
@@ -759,7 +766,7 @@ Item {
                     font.bold: true
                     elide: Text.ElideRight
                   }
-                  Text {
+                  SafeText {
                     width: parent.width
                     text: root.activeSession ? TryModel.pathLabel(root.activeSession.sessionPath, root.homePath) : ""
                     color: root.dimForeground
@@ -822,7 +829,7 @@ Item {
                 }
               }
 
-              Text {
+              SafeText {
                 text: "TRY DETAILS"
                 color: root.dimForeground
                 font.family: root.fontFamily
@@ -869,7 +876,7 @@ Item {
                   }
                 }
 
-                Text {
+                SafeText {
                   anchors.right: groupField.right
                   anchors.rightMargin: Style.space(10)
                   anchors.verticalCenter: groupField.verticalCenter
@@ -910,7 +917,7 @@ Item {
                         ? Style.hoverFillFor(root.foreground, root.accent)
                         : "transparent"
 
-                      Text {
+                      SafeText {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
@@ -957,6 +964,7 @@ Item {
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.body
                   wrapMode: TextEdit.Wrap
+                  textFormat: TextEdit.PlainText
                   background: null
                   onActiveFocusChanged: if (!activeFocus) root.persistDraft()
                   Keys.onPressed: function(event) {
@@ -988,7 +996,7 @@ Item {
               }
             }
 
-            Text {
+            SafeText {
               anchors.centerIn: parent
               visible: root.activeSession === null
               text: "SELECT A TRY"
@@ -1005,7 +1013,7 @@ Item {
           width: parent.width
           height: Style.space(22)
 
-          Text {
+          SafeText {
             width: parent.width * 0.72
             text: (root.loading ? "◌  " : "●  ") + root.message
             color: root.messageError ? root.urgent : (root.loading ? root.dimForeground : root.accent)
@@ -1014,7 +1022,7 @@ Item {
             font.letterSpacing: 0.7
             elide: Text.ElideRight
           }
-          Text {
+          SafeText {
             width: parent.width * 0.28
             text: "↑↓ SELECT  ·  ENTER EDIT  ·  / SEARCH"
             color: root.dimForeground
@@ -1052,7 +1060,7 @@ Item {
             anchors.leftMargin: parent.contentLeftInset
             spacing: Style.space(14)
 
-            Text {
+            SafeText {
               text: "CREATE NEW TRY"
               color: root.foreground
               font.family: root.fontFamily
@@ -1083,7 +1091,7 @@ Item {
         anchors.fill: parent
         opened: root.deleteOpen
         z: 60
-        message: "Move “" + (root.activeSession ? root.activeSession.title : "this try") + "” to trash?"
+        message: "Move “" + root.plainForAutoText(root.activeSession ? root.activeSession.title : "this try") + "” to trash?"
         confirmText: "Trash"
         background: root.background
         foreground: root.foreground
@@ -1096,6 +1104,10 @@ Item {
         onConfirmed: root.confirmTrash()
       }
     }
+  }
+
+  component SafeText: Text {
+    textFormat: Text.PlainText
   }
 
   component InfoCell: BorderSurface {
@@ -1116,14 +1128,14 @@ Item {
       anchors.leftMargin: Style.space(10)
       anchors.rightMargin: Style.space(10)
       spacing: Style.space(3)
-      Text {
+      SafeText {
         text: cell.label
         color: root.dimForeground
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
         font.letterSpacing: 1
       }
-      Text {
+      SafeText {
         width: parent.width
         text: cell.value
         color: cell.alert ? root.urgent : root.foreground
