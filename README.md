@@ -4,13 +4,7 @@
 
 TryStation is an Omarchy Quattro plugin for the experiment directories already managed by `try`. It adds a themed desktop window and optional bar widget without replacing the CLI or introducing a second project format.
 
-> **Preview coming soon**
->
-> Add the marketplace screenshot or short demo at `docs/trystation-preview.webp` before publishing.
-
-<!-- Replace the preview notice above with:
-![TryStation summary and library](docs/trystation-preview.webp)
--->
+![TryStation summary panel on an Omarchy desktop](preview.png)
 
 ## Features
 
