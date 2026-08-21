@@ -90,8 +90,7 @@ Panel {
         title: String(row.title || row.name || "Untitled"),
         sessionPath: String(row.path || ""),
         modified: Number(row.modified || 0),
-        git: row.git === true,
-        changes: Number(row.changes || 0),
+        branch: String(row.branch || ""),
         groupName: String(row.group || ""),
         language: String(row.language || "Folder"),
         icon: String(row.icon || "󰉋"),
@@ -362,8 +361,7 @@ Panel {
             required property string title
             required property string sessionPath
             required property int modified
-            required property bool git
-            required property int changes
+            required property string branch
             required property string groupName
             required property string language
             required property string icon
@@ -434,10 +432,14 @@ Panel {
 
               Text {
                 width: parent.width
+                readonly property string usefulBranch: row.branch
+                  && row.branch.toLowerCase() !== "main"
+                  && row.branch.toLowerCase() !== "master" ? row.branch : ""
                 text: (row.groupName ? row.groupName.toUpperCase() + "  ·  " : "")
-                  + row.language + "  ·  "
-                  + (row.graduated ? "GRADUATED" : (row.git ? (row.changes ? "DIRTY ×" + row.changes : "CLEAN") : "SCRATCH"))
-                color: row.changes ? Color.urgent : Qt.darker(root.contentForeground, 1.5)
+                  + row.language
+                  + (usefulBranch ? "  ·  " + usefulBranch : "")
+                  + (row.graduated ? "  ·  GRADUATED" : "")
+                color: Qt.darker(root.contentForeground, 1.5)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.caption
                 elide: Text.ElideRight
