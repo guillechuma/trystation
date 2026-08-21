@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Guillermo Chumaceiro",
   "license": "MIT",
-  "description": "A retro visual workbench for Tobi's try, turning ephemeral coding experiments into searchable, inspectable tries.",
+  "description": "A theme-aware, retro-inspired visual workbench for Tobi's try, turning ephemeral coding experiments into searchable, inspectable tries.",
   "kinds": [
     "bar-widget"
   ],

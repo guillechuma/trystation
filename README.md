@@ -1,6 +1,6 @@
 # TryStation
 
-> A retro visual workbench for [Tobi's `try`](https://github.com/tobi/try), turning ephemeral coding experiments into searchable, inspectable tries.
+> A theme-aware, retro-inspired visual workbench for [Tobi's `try`](https://github.com/tobi/try), turning ephemeral coding experiments into searchable, inspectable tries.
 
 TryStation is an Omarchy Quattro plugin for the experiment directories already managed by `try`. It adds a themed desktop window and optional bar widget without replacing the CLI or introducing a second project format.
 
@@ -17,7 +17,7 @@ TryStation is an Omarchy Quattro plugin for the experiment directories already m
 - Compact Omarchy-style summary popout for recent and pinned tries
 - Fuzzy search across names, groups, notes, languages, and Git branches
 - Numbered `1`–`5` shortcuts that open visible results in a terminal
-- Full retro library window for deeper organization
+- Full theme-aware library window with retro-inspired workstation styling
 - `TRY` bar widget with left-click, right-click, and middle-click actions
 - Browse and search every try by name, group, language, Git branch, or note
 - Inspect Git status, worktree state, stack, README summary, and activity time
