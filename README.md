@@ -52,7 +52,7 @@ TryStation targets Omarchy 4 / Quattro and uses tools included by Omarchy:
 - `omarchy-launch-editor`
 - Nautilus and `wl-copy`
 
-It does not use sudo, install hooks, background services, network access, or a second Quickshell process.
+It does not request elevated privileges, install hooks, background services, network access, or a second Quickshell process.
 
 ## Install
 
