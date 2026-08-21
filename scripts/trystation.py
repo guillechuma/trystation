@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Filesystem adapter for TryStation.
 
-Tobi's `try` directory remains the source of truth. This helper only reads that
+Tobi Lütke's `try` directory remains the source of truth. This helper only reads that
 folder and stores optional presentation metadata in XDG state.
 """
 

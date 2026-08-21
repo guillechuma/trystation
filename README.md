@@ -1,6 +1,6 @@
 # TryStation
 
-> A theme-aware, retro-inspired visual workbench for [Tobi's `try`](https://github.com/tobi/try), turning ephemeral coding experiments into searchable, inspectable tries.
+> A theme-aware, retro-inspired visual workbench for [Tobi Lütke's `try`](https://github.com/tobi/try), turning ephemeral coding experiments into searchable, inspectable tries.
 
 TryStation is an Omarchy Quattro plugin for the experiment directories already managed by `try`. It adds a themed desktop window and optional bar widget without replacing the CLI or introducing a second project format.
 
@@ -174,7 +174,7 @@ rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/trystation"
 
 ## Credits
 
-TryStation is built around [Tobi's `try`](https://github.com/tobi/try), the ephemeral workspace manager that defines the try workflow and directory convention.
+TryStation is built around [Tobi Lütke's `try`](https://github.com/tobi/try), the ephemeral workspace manager that defines the try workflow and directory convention.
 
 ## License
 
